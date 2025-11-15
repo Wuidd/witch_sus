@@ -152,7 +152,6 @@ BlockEvents.broken(event =>{
     for (let allowed of brokenAllowBlock){
         if (block.id == allowed || block.hasTag(allowed)){return 0}
     }
-    console.log(block.id)
     event.cancel()
 })
 
