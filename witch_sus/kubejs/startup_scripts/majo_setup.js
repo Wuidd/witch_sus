@@ -31,6 +31,7 @@ function Majo(name,height,color,token,physique,mentality){
 
     this.scoreHolder = null
     this.selectedSlot = null
+    this.beCarried = false
 }
 
 //角色卡
@@ -39,7 +40,7 @@ const sakuraba_ema = new Majo("樱羽艾玛",156,'§d',"mocai:ema_sakura",60,100
 const nikaido_hiro = new Majo("二阶堂希罗",157,'§c',"mocai:hiro_red_lily",90,100)
 const sawatari_koko = new Majo("泽渡可可",158,"§6","mocai:coco_headphone",40,60)
 const tachibana_sheri = new Majo("橘雪莉",162,"§1","mocai:sheri_magnifying_glass",100,100)
-const tono_hanna = new Majo("远野汉娜",148,"§a","mocai:hannaheaddressflower",80,40)
+const tono_hanna = new Majo("远野汉娜",148,"§a","mocai:hannafan",80,40)
 const natsume_anan = new Majo("夏目安安",145,"§9","mocai:anan_drawing_book",20,50)
 const jogasaki_noa = new Majo("城崎诺亚",150,"§b","mocai:noacolorpalette",30,70)
 const hasumi_reia = new Majo("莲见蕾雅",172,"§e","mocai:reia_crown",90,70)
@@ -53,6 +54,8 @@ const hikami_meruru = new Majo("冰上梅露露",158,"§f","mocai:meruru_cross",
 
 hosho_mago.learnedSound = [hosho_mago]
 hosho_mago.selectedSound = 0
+
+tono_hanna.flying = false
 
 //登记的将生效的角色卡
 

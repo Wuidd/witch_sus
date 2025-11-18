@@ -12,7 +12,7 @@ let jump = null //跳跃计分板
 let neededScoreBoard = ["Majo_Progress","Fatigue","Pressure","Jump"] //必要的计分板目录
 let majolizeTimePause = 72000 //每隔该tick增加基础魔女化值
 let basicMajolizeSpeed = 100 //基础魔女化值
-let majolizeInformTimePause = 1200 //每隔该tick检查一次魔女化程度
+let majolizeInformTimePause = 100 //每隔该tick检查一次魔女化程度
 let emaMajolizeFixTimePause = 1200 //每隔该tick触发一次艾玛的陪伴检定
 
 let isMajoPlayer = global.isMajoPlayer

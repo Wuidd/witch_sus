@@ -2,13 +2,13 @@
 
 //精力系统
 let basicPressureSpeed = 2 //基础压力积累速度
-let extraPressure = 150 //交互时的额外精力消耗
-let maxMWPossibility = 0.3 //最大走神可能性
-let maxDropPossibility = 0.0001 //最大每刻脱手可能性
-let maxSleepyPossibility = 0.001 //最大每刻困倦可能性
+let extraPressure = 100 //交互时的额外精力消耗
+let maxMWPossibility = 0.1 //最大走神可能性
+let maxDropPossibility = 0.0005 //最大每刻脱手可能性
+let maxSleepyPossibility = 0.0005 //最大每刻困倦可能性
 let faintMajolize = 1000 //昏迷惩罚
 let faintRecovery = -50 //昏迷时的恢复速度
-let noPressureCostItem = ["mocai:margo_tarot","minecraft:clock"] //无须消耗精力互动的物品
+let noPressureCostItem = ["mocai:margo_tarot","minecraft:clock","minecraft:air","mocai:hannafan"] //无须消耗精力互动的物品
 
 //主进程
 
@@ -26,8 +26,10 @@ PlayerEvents.tick(event =>{
         pressureScore.set(0)
     }
     if (majo.faint){
-        player.startSleeping(player.position())
-        player.setPose("sleeping")
+        if (!majo.beCarried){
+            player.startSleeping(player.pos)
+            server.runCommandSilent("/ysm play "+player.name.string+" climbing")
+        }
         player.setSelectedSlot(majo.selectedSlot)
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 2 0 true")
         pressureScore.add(Math.ceil(faintRecovery/majo.pressureMulti))
@@ -67,8 +69,10 @@ PlayerEvents.tick(event =>{
     let majo = isMajoPlayer(player)
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
     if (majo.faint){
-        player.startSleeping(player.pos)
-        player.setPose("sleeping")
+        if (!majo.beCarried){
+            player.startSleeping(player.pos)
+            server.runCommandSilent("/ysm play "+player.name.string+" climbing")
+        }
         player.setSelectedSlot(majo.selectedSlot)
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 2 0 true")
         return 1
@@ -91,11 +95,14 @@ EntityEvents.beforeHurt(event =>{
     let player = event.source.player
     if (!isMajoPlayer(player)){return 0}
     let majo = isMajoPlayer(player)
-    if (majo.faint){event.setDamage(0)}
+    if (majo.faint){
+        event.setDamage(0) 
+        return 0
+    }
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
-    pressureScore.add(extraPressure*majo.pressureMulti)
-    if (Math.random() < maxMWPossibility*(pressureScore.get()/majo.maxPressure) || majo.faint){
+    if (!isFocusMode){pressureScore.add(extraPressure*majo.pressureMulti)}
+    if (Math.random() < maxMWPossibility*Math.max(0,(2*pressureScore.get()/majo.maxPressure-1))){
         event.setDamage(0)
         if (!majo.faint){MWInform(player,Math.ceil(6*pressureScore.get()/majo.maxPressure))}
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 1 0 true")
@@ -110,8 +117,8 @@ ItemEvents.entityInteracted(event =>{
     if (majo.faint){event.cancel()}
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
-    pressureScore.add(extraPressure*majo.pressureMulti)
-    if (Math.random() < maxMWPossibility*(pressureScore.get()/majo.maxPressure) || majo.faint){
+    if (!isFocusMode){pressureScore.add(extraPressure*majo.pressureMulti)}
+    if (Math.random() < maxMWPossibility*Math.max(0,(2*pressureScore.get()/majo.maxPressure-1))){
         if(!majo.faint){MWInform(player,Math.ceil(6*pressureScore.get()/majo.maxPressure))}
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 1 0 true")
         event.cancel()
@@ -123,15 +130,15 @@ ItemEvents.rightClicked(event =>{
     let player = event.player
     if (!isMajoPlayer(player)){return 0}
     let item = event.item
+    let majo = isMajoPlayer(player)
+    if (majo.faint){event.cancel()}
     for (let noCost of noPressureCostItem){
         if (item.is(noCost)){return 0}
     }
-    let majo = isMajoPlayer(player)
-    if (majo.faint){event.cancel()}
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
-    pressureScore.add(extraPressure*majo.pressureMulti)
-    if (Math.random() < maxMWPossibility*(pressureScore.get()/majo.maxPressure) || majo.faint){
+    if (!isFocusMode){pressureScore.add(extraPressure*majo.pressureMulti)}
+    if (Math.random() < maxMWPossibility*Math.max(0,(2*pressureScore.get()/majo.maxPressure-1))){
         if(!majo.faint){MWInform(player,Math.ceil(6*pressureScore.get()/majo.maxPressure))}
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 1 0 true")
         event.cancel()
@@ -142,6 +149,8 @@ BlockEvents.rightClicked(event =>{
     if (!isMajoProgressing){return 0}
     let player = event.player
     if (!isMajoPlayer(player)){return 0}
+    let majo = isMajoPlayer(player)
+    if (majo.faint){event.cancel()}
     let block = event.block
     for (let ignoreBlock of global.ignoreMWEventBlockList){
         if (block.getId() == ignoreBlock){return 0} 
@@ -149,12 +158,10 @@ BlockEvents.rightClicked(event =>{
     for (let ignoreBlockTag of global.ignoreMWEventBlockTagList){
         if (block.hasTag(ignoreBlockTag)){return 0}
     }
-    let majo = isMajoPlayer(player)
-    if (majo.faint){event.cancel()}
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
-    pressureScore.add(extraPressure*majo.pressureMulti)
-    if (Math.random() < maxMWPossibility*(pressureScore.get()/majo.maxPressure) || majo.faint){
+    if (!isFocusMode){pressureScore.add(extraPressure*majo.pressureMulti)}
+    if (Math.random() < maxMWPossibility*Math.max(0,(2*pressureScore.get()/majo.maxPressure-1))){
         if(!majo.faint){MWInform(player,Math.ceil(6*pressureScore.get()/majo.maxPressure))}
         server.runCommandSilent("/effect give "+player.name.string+" minecraft:blindness 1 0 true")
         event.cancel()
@@ -176,7 +183,7 @@ PlayerEvents.tick(event =>{
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
     if (pressureScore.get()/majo.maxPressure < 0.5){return 0}
-    if (Math.random() < maxDropPossibility*(pressureScore.get()/majo.maxPressure)){
+    if (Math.random() < maxDropPossibility*Math.exp((pressureScore.get()-majo.maxPressure)/majo.maxPressure)){
         if(!item.is(majo.token)){
             player.drop(item,false,false)
             player.setMainHandItem("air")
@@ -232,8 +239,8 @@ function MWInform(player,num){
 
 //走神词库
 
-let MWWordsStage1 = ["§4……走神了……？","§4欸……刚刚……","§4什么……？","§4感觉有点不清醒……"]
-let MWWordsStage2 = ["§4有点犯困……","§4啊……啊……？","§4专注不了……","§4欸……？突然去想了别的事情……"]
+let MWWordsStage1 = ["§e……走神了……？","§e欸……刚刚……","§e什么……？","§e感觉有点不清醒……"]
+let MWWordsStage2 = ["§e有点犯困……","§e啊……啊……？","§e专注不了……","§e欸……？突然去想了别的事情……"]
 let MWWordsStage3 = ["§4好困……","§4睁不开眼了……","§4要睡着了……","§4得……想办法休息一下……"]
 
 //昏迷词库

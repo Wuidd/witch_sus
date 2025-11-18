@@ -7,6 +7,7 @@ let brokenAllowBlock = ["air","supplementaries:book_pile_horizontal","sleep_tigh
 let shoutRadius = [24,32,40] //大声发的收听范围
 let talkRadius = [8,12,16] //普通谈话的收听范围
 let whispRadius = [2,3,4] //耳语的收听范围
+let localRadius = 35 //本地听取的收听范围
 let disableEffectTimePause = 20 //消除禁用效果的间隔
 let nightSpeedMulti = 0.5 //夜晚流逝速度
 
@@ -61,6 +62,23 @@ PlayerEvents.chat(event =>{
     else {
         if (isMajoPlayer(player)){
             let majo = isMajoPlayer(player)
+            let ananOrder = false
+            let ananOrderReceived = global.majoList
+            if (majo.name == "夏目安安"){
+                let order = messagePrefix(message)
+                order = order.split("\\[").join("【")
+                if (order.charCodeAt(order.length-1) === "]"){
+                    order = order.slice(0,order.length-1)+"】"
+                }
+                if (order.charCodeAt(0) === "【" && order.charCodeAt(order.length-1) === "】"){
+                    if (order.length > 2){
+                        ananOrder = true
+                    }
+                    else (
+                        event.cancel()
+                    )
+                }
+            }
             if (majo.faint || player.sleeping){message = faintWords[Math.floor(Math.random()*faintWords.length)]}
             for (let receiver of allPlayers){
                 if (isMajoPlayer(receiver)){
@@ -89,10 +107,42 @@ PlayerEvents.chat(event =>{
                     if (distance > radiusSet[1] && distance <= radiusSet[2]){
                         speaker = "◆未知"
                     }
+                    if (distance <= radiusSet[0] && ananOrder && isMajoPlayer(receiver).name != "夏目安安"){
+                        if (messagePrefix(message).includes(isMajoPlayer(receiver).name)){
+                            if (ananOrderReceived == global.majoList){
+                                ananOrderReceived = ["placeHolder"]
+                            }
+                            ananOrderReceived.push(isMajoPlayer(receiver))
+                            message = replaceFirstOccurrence(message,isMajoPlayer(receiver).name,'')
+                            let order = messagePrefix(message)
+                            order = order.split("\\[").join("【")
+                            if (order.charCodeAt(order.length-1) === "]"){
+                                order = order.slice(0,order.length-1)+"】"
+                            }
+                            if (order === "【】"){
+                                event.cancel()
+                            }
+                        }
+                        continue
+                    } 
+                    if ((distance > radiusSet[0] || isMajoPlayer(receiver).name == "夏目安安") && ananOrder){
+                        ananOrderReceived = ananOrderReceived.filter(majo =>{
+                            if (majo == "placeHolder"){
+                                return majo
+                            }
+                            if (majo.name != isMajoPlayer(receiver).name){
+                                return majo
+                            }
+                        })
+                    }
                     receiver.tell(speaker)
                     receiver.tell("  "+messageSponge(messagePrefix(message),Math.max(0,(distance-radiusSet[0])/(radiusSet[1]-radiusSet[0]))))
                 }
                 else {
+                    if (receiver.stages.has("#local")){
+                        let distance = receiver.distanceToEntity(player)
+                        if (distance > localRadius){continue}
+                    }
                     let speaker = majo.color+"◆"+majo.name
                     if (majo.name == '宝生玛格'){
                         let imitated = majo.learnedSound[majo.selectedSound]
@@ -105,9 +155,55 @@ PlayerEvents.chat(event =>{
                     receiver.tell("  "+messagePrefix(message))
                 }
             }
+            if (ananOrder){
+                let order = messagePrefix(message)
+                order = order.slice(0,0)+"【"+order.slice(1)
+                order = order.slice(0,order.length-1)+'】'
+                if (ananOrderReceived[0] == "placeHolder"){
+                    ananOrderReceived.splice(0,1)
+                }
+                for (let orderReceiver of ananOrderReceived){
+                    if (orderReceiver.player){
+                        let receiverName = orderReceiver.player.name.string
+                        orderReceiver.player.tell(majo.color+"◆"+majo.name)
+                        orderReceiver.player.tell("  "+order)
+                        orderReceiver.player.potionEffects.add("minecraft:nausea",140,0,false,false)
+                        server.runCommandSilent("/shader apply "+receiverName+" exposure:shaders/post/light_blue_tint.json")
+                        server.runCommandSilent('/title '+receiverName+' title {"text":"'+majo.color+order+'"}')
+                        server.runCommandSilent("/execute as "+receiverName+" at @s run playsound minecraft:entity.wither.spawn ambient @s ~ ~ ~ 1 2")
+                        server.scheduleInTicks(100,event =>{
+                            server.runCommandSilent("/shader remove "+receiverName)
+                        })
+                    }
+                }
+            }
             event.cancel()
         }
         if (isOperator(player)){
+            if (message == "#local"){
+                server.runCommandSilent("/execute as "+username+" at @s run playsound minecraft:block.note_block.harp voice @s")
+                if (!player.stages.has("#local")){
+                    player.tell("§e切换至听取本地聊天")
+                    player.stages.add("#local")
+                    event.cancel()
+                }
+                else {
+                    player.tell("§e您已在听取本地聊天了")
+                    event.cancel()
+                }
+            }
+            if (message == "#all"){
+                server.runCommandSilent("/execute as "+username+" at @s run playsound minecraft:block.note_block.harp voice @s")
+                if (player.stages.has("#local")){
+                    player.tell("§e切换至听取全局聊天")
+                    player.stages.remove("#local")
+                    event.cancel()
+                }
+                else {
+                    player.tell("§e您已在听取全局聊天了")
+                    event.cancel()
+                }
+            }
             for (let receiver of allPlayers){
                 if (isMajoPlayer(receiver)){
                     let speaker = "◆"+operatorList[username]
@@ -137,11 +233,39 @@ PlayerEvents.chat(event =>{
                     receiver.tell("  "+messageSponge(messagePrefix(message),Math.max(0,(distance-radiusSet[0])/(radiusSet[1]-radiusSet[0]))))
                 }
                 else {
+                    if (receiver.stages.has("#local")){
+                        let distance = receiver.distanceToEntity(player)
+                        if (distance > localRadius){continue}
+                    }
                     receiver.tell("◆"+operatorList[username])
                     receiver.tell("  "+messagePrefix(message))
                 }
             }
             event.cancel()
+        }
+        if (message == "#local"){
+            server.runCommandSilent("/execute as "+username+" at @s run playsound minecraft:block.note_block.harp voice @s")
+            if (!player.stages.has("#local")){
+                player.tell("§e切换至听取本地聊天")
+                player.stages.add("#local")
+                event.cancel()
+            }
+            else {
+                player.tell("§e您已在听取本地聊天了")
+                event.cancel()
+            }
+        }
+        if (message == "#all"){
+            server.runCommandSilent("/execute as "+username+" at @s run playsound minecraft:block.note_block.harp voice @s")
+            if (player.stages.has("#local")){
+                player.tell("§e切换至听取全局聊天")
+                player.stages.remove("#local")
+                event.cancel()
+            }
+            else {
+                player.tell("§e您已在听取全局聊天了")
+                event.cancel()
+            }
         }
         for (let receiver of allPlayers){
             if (isMajoPlayer(receiver) || isOperator(receiver)){
@@ -198,7 +322,24 @@ BlockEvents.broken(event =>{
     event.cancel()
 })
 
-//
+//被抱起时的标签
+
+PlayerEvents.tick(event =>{
+    let player = event.player
+    if (player.isSpectator()){return 0}
+    if (isMajoPlayer(player)){
+        if (isMajoPlayer(player).beCarried){
+            isMajoPlayer(player).beCarried = false
+        }
+    }
+    let carry = player.carryOnData
+    if (!carry.carrying){return 0}
+    if (!carry.entity.isPlayer()){return 0}
+    let majo = isMajoPlayer(carry.entity)
+    if (majo){
+        majo.beCarried = true
+    }
+})
 
 //规范化字符串
 
@@ -265,4 +406,12 @@ function messageSponge(message,percent){
     return selectedIndices.reduce((acc,index) =>{
         return acc.slice(0,index)+spongeWord+acc.slice(index+1)
     },message)
+}
+
+//发挥正常replace功能
+
+function replaceFirstOccurrence(str, searchStr, replacement) {
+    let index = str.indexOf(searchStr);
+    if (index == -1) return str;
+    return str.substring(0, index)+replacement+str.substring(index + searchStr.length);
 }

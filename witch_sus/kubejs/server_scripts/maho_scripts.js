@@ -1,14 +1,18 @@
 // priority:6
 //魔法复现
 
+let meruruMahoCost = 10000 //梅露露魔法的精力消耗
+let hannaMahoCost = 20 //汉娜魔法的体力消耗
+let hannaMahoTimePause = 6 //调整汉娜的漂浮速率
+
 //梅露露的魔法
-let meruruMahoCost = 10000
 ItemEvents.entityInteracted("mocai:meruru_cross",event =>{
     if (!isMajoProgressing){return 0}
     let player = event.player
     if (!isMajoPlayer(player)){return 0}
     let majo = isMajoPlayer(player)
     if (majo.name != "冰上梅露露"){return 0}
+    if (majo.faint){return 0}
     let entity = event.target
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
@@ -39,6 +43,7 @@ PlayerEvents.tick(event =>{
     }    
 })
 
+//玛格的魔法
 //玛格的发言实现见player_behaviour部分
 //玛格的模仿录入
 ItemEvents.entityInteracted("mocai:margo_tarot",event =>{
@@ -73,11 +78,15 @@ PlayerEvents.tick(event =>{
     if (majo.name != "宝生玛格"){return 0}
     if (majo.selectedSound >= majo.learnedSound.length){majo.selectedSound = 0}
     let item = player.getMainHandItem()
-    if (item.is("mocai:margo_tarot")){
-        let imitated = majo.learnedSound[majo.selectedSound]
-        let server = event.server
-        server.runCommandSilent('/title '+player.name.string+' actionbar {"text":"正在使用声音:'+imitated.color+"◆"+imitated.name+'"}')
+    if (!item.is("mocai:margo_tarot")){
+        item = player.getOffHandItem()
+        if (!item.is("mocai:margo_tarot")){
+            return 0
+        }
     }
+    let imitated = majo.learnedSound[majo.selectedSound]
+    let server = event.server
+    server.runCommandSilent('/title '+player.name.string+' actionbar {"text":"正在使用声音:'+imitated.color+"◆"+imitated.name+'"}')
 })
 
 //选择
@@ -89,3 +98,70 @@ ItemEvents.rightClicked("mocai:margo_tarot",event=>{
     if (majo.name != "宝生玛格"){return 0}
     majo.selectedSound += 1
 })
+
+//汉娜的魔法
+//开关
+ItemEvents.rightClicked("mocai:hannafan",event =>{
+    if (!isMajoProgressing){return 0}
+    let player = event.player
+    if (!isMajoPlayer(player)){return 0}
+    let majo = isMajoPlayer(player)
+    if (majo.name != "远野汉娜"){return 0}
+    let server = event.server
+    if (!majo.flying){
+        server.runCommandSilent("/execute as "+player.name.string+" at @s run playsound minecraft:block.note_block.harp voice @s")
+        majo.flying = true
+    }
+    else {
+        server.runCommandSilent("/execute as "+player.name.string+" at @s run playsound minecraft:block.note_block.harp voice @s")
+        majo.flying = false
+    }
+})
+
+//手持提示
+PlayerEvents.tick(event =>{
+    if (!isMajoProgressing){return 0}
+    let player = event.player
+    if (!isMajoPlayer(player)){return 0}
+    let majo = isMajoPlayer(player)
+    if (majo.name != "远野汉娜"){return 0}
+    let item = player.getMainHandItem()
+    if (!item.is("mocai:hannafan")){
+        item = player.getOffHandItem()
+        if (!item.is("mocai:hannafan")){
+            return 0
+        }
+    }
+    let server = event.server
+    if (!majo.flying){
+        server.runCommandSilent('/title '+player.name.string+' actionbar {"text":"不在飞行desuwa","color":"yellow"}')
+    }
+    else {
+        server.runCommandSilent('/title '+player.name.string+' actionbar {"text":"正在飞行desuwa","color":"green"}')
+    }
+})
+
+PlayerEvents.tick(event =>{
+    if (!isMajoProgressing){return 0}
+    let player = event.player
+    if (!isMajoPlayer(player)){return 0}
+    let majo = isMajoPlayer(player)
+    if (majo.name != "远野汉娜"){return 0}
+    if (majo.flying && !majo.exhausted){
+        let server = event.server
+        let level = event.level
+        let pos = vecToArr(player.position())
+        let time = server.tickCount
+        if (time % hannaMahoTimePause == 0 || level.getBlock(pos[0],Math.floor(pos[1]-0.3),pos[2]).getId() != "minecraft:air" || player.shiftKeyDown){
+            player.potionEffects.add("minecraft:levitation",Math.floor(hannaMahoTimePause/2),0,false,false)
+        }
+        player.potionEffects.add("minecraft:slow_falling",60,0,false,false)
+        if (player.shiftKeyDown){
+            player.potionEffects.add("minecraft:levitation",20,0,false,false)
+        }
+        let fatigueScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,fatigue)
+        fatigueScore.add(hannaMahoCost*majo.fatigueMulti*majo.fatigueMultiFromPressure)
+    }
+})
+
+//安安的魔法实现见player_behaviour部分
