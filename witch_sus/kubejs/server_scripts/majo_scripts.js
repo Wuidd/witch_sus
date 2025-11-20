@@ -10,7 +10,7 @@ let fatigue = null //疲劳计分板
 let pressure = null //压力计分板
 let jump = null //跳跃计分板
 let neededScoreBoard = ["Majo_Progress","Fatigue","Pressure","Jump"] //必要的计分板目录
-let operatorList = {"placeHolder":"placeHolder","0yiyu0":"看守","name_means_game":"典狱长","NoStay":"月代雪"} //场务名单
+let operatorList = {"placeHolder":"placeHolder","0yiyu0":"看守","name_means_game":"典狱长","NoStay":"月代雪","v_t_4":"典狱长"} //场务名单
 let majolizeTimePause = 72000 //每隔该tick增加基础魔女化值
 let basicMajolizeSpeed = 100 //基础魔女化值
 let majolizeInformTimePause = 100 //每隔该tick检查一次魔女化程度
@@ -147,14 +147,14 @@ ServerEvents.tick(event =>{
         reloadScript(server)
     }
     if (!isMajoProgressing){return 0}
-    if (timeSynsTrigger){return 0}
-    if (isFocusMode){return 0}
     let time = server.tickCount
-    if (time % majolizeTimePause == 0){
-        majolizeProgress(server)
-    }
     if (time % majolizeInformTimePause == 0){
         majolizeInform(server)
+    }
+    if (timeSynsTrigger){return 0}
+    if (isFocusMode){return 0}
+    if (time % majolizeTimePause == 0){
+        majolizeProgress(server)
     }
     if (time % emaMajolizeFixTimePause == 0){
         emaMajolizeFix(server)
@@ -298,14 +298,14 @@ function majoPlayerPrefix(server,majo){
     server.runCommandSilent("/gamemode survival "+name)
     server.runCommandSilent("/tag "+name+" add majo")
     player.setMaxHealth(majo.maxHealth)
+    if (majo.noMajoProgress){
+        majo.majolizeMulti = 0
+    }
     if (majo.name == "冰上梅露露"){
         server.runCommandSilent("/effect give "+name+" minecraft:resistance infinite 4 true")
         server.runCommandSilent("/effect give "+name+" minecraft:regeneration infinite 9 true")
         server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite 3 true")
-        majo.majolizeMulti = 0
-    }
-    if (majo.name == "橘雪莉"){
-        majo.majolizeMulti = 0
+        server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress).set(4*majo.majolize/5+440)
     }
 }
 
@@ -358,15 +358,15 @@ function majolizeInform(server){
                 newScore = 0
                 server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress).set(0)
             }
-            if (newScore == oldScore){
-                return 0
-            }
-            let majolizeStage = majo.majolize/5
-            let oldStage = Math.floor(oldScore/majolizeStage)
-            let newStage = Math.floor(newScore/majolizeStage)
+            let oldStage = Math.floor(5*oldScore/majo.majolize)
+            let newStage = Math.floor(5*newScore/majo.majolize)
             if (oldStage > 5){oldStage = 5}
             if (newStage > 5){newStage = 5}
             let debris = majo.debris
+            server.runCommandSilent("/effect clear "+name+" mocai:witchfication")
+            if(newStage > 0 && newStage < 5){server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite "+(newStage-1)+" true")}
+            else {server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite 4 false")}
+            majo.majolizeScore = newScore
             if (newScore > debris){
                 server.runCommandSilent("/damage "+name+" 9999 magic")
                 server.runCommandSilent("/execute as "+name+" at @s run playsound minecraft:entity.wither.death voice @s ~ ~ ~ 1 1")
@@ -400,10 +400,7 @@ function majolizeInform(server){
                         server.runCommandSilent("/effect give "+name+" minecraft:strength infinite 2 true")
                         break
                 }
-                if (newStage < 5){server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite "+(newStage-1)+" true")}
-                else {server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite 4 false")}
                 server.runCommandSilent("/execute as "+name+" at @s run playsound minecraft:entity.wither.spawn voice @s ~ ~ ~ "+(0.2*newStage)+" "+(1/newStage))
-                majo.majolizeScore = newScore
                 continue
             }
             if (newStage < oldStage){
@@ -429,13 +426,9 @@ function majolizeInform(server){
                         server.runCommandSilent("/effect clear "+name+" minecraft:strength")
                         break
                 }
-                server.runCommandSilent("/effect clear "+name+" mocai:witchfication")
-                if(newStage > 0){server.runCommandSilent("/effect give "+name+" mocai:witchfication infinite "+(newStage-1)+" true")}
                 server.runCommandSilent("/execute as "+name+" at @s run playsound minecraft:block.beacon.power_select voice @s ~ ~ ~ "+(0.2*(newStage+1))+" 1")
-                majo.majolizeScore = newScore
                 continue
             }
-            majo.majolizeScore = newScore
         }
     }
 }

@@ -4,10 +4,10 @@
 let spongeWord = ".." //混淆替换词
 let noSpongeChar = [",","，",".","。","？","?","!","！"] //不予混淆的字符
 let brokenAllowBlock = ["air","supplementaries:book_pile_horizontal","sleep_tight:hammocks","minecraft:crops"] //允许破坏的方块/方块类
-let shoutRadius = [24,32,40] //大声发的收听范围
+let shoutRadius = [35,40,45] //大声发的收听范围
 let talkRadius = [8,12,16] //普通谈话的收听范围
 let whispRadius = [2,3,4] //耳语的收听范围
-let localRadius = 35 //本地听取的收听范围
+let localRadius = shoutRadius[2] //本地听取的收听范围
 let disableEffectTimePause = 20 //消除禁用效果的间隔
 let nightSpeedMulti = 0.5 //夜晚流逝速度
 
@@ -63,16 +63,28 @@ PlayerEvents.chat(event =>{
         if (isMajoPlayer(player)){
             let majo = isMajoPlayer(player)
             let ananOrder = false
-            let ananOrderReceived = global.majoList
+            let ananOrderRadius = -1
+            let ananOrderReceived = []
             if (majo.name == "夏目安安"){
                 let order = messagePrefix(message)
-                order = order.split("\\[").join("【")
-                if (order.charCodeAt(order.length-1) === "]"){
-                    order = order.slice(0,order.length-1)+"】"
-                }
-                if (order.charCodeAt(0) === "【" && order.charCodeAt(order.length-1) === "】"){
+                order = String(order)
+                order = order.replace("\[","【")
+                order = order.replace("\]","】")
+                if (order.charCodeAt(0) === "【" && (order.charCodeAt((order.length)-1) === "【" || order.charCodeAt((order.length)-1) === "】")){
                     if (order.length > 2){
                         ananOrder = true
+                        switch (message.charCodeAt(0)){
+                        case "#":
+                            ananOrderRadius = shoutRadius[0]
+                            break
+                        case "$":
+                        case "￥":
+                            ananOrderRadius = whispRadius[0]
+                            break
+                        default:
+                            ananOrderRadius = talkRadius[0]
+                            break
+                        }
                     }
                     else (
                         event.cancel()
@@ -107,34 +119,20 @@ PlayerEvents.chat(event =>{
                     if (distance > radiusSet[1] && distance <= radiusSet[2]){
                         speaker = "◆未知"
                     }
-                    if (distance <= radiusSet[0] && ananOrder && isMajoPlayer(receiver).name != "夏目安安"){
+                    if (distance <= radiusSet[0]&& (distance > 0.01 || isMajoPlayer(receiver).name == "夏目安安") && ananOrder){
                         if (messagePrefix(message).includes(isMajoPlayer(receiver).name)){
-                            if (ananOrderReceived == global.majoList){
-                                ananOrderReceived = ["placeHolder"]
-                            }
                             ananOrderReceived.push(isMajoPlayer(receiver))
                             message = replaceFirstOccurrence(message,isMajoPlayer(receiver).name,'')
                             let order = messagePrefix(message)
-                            order = order.split("\\[").join("【")
-                            if (order.charCodeAt(order.length-1) === "]"){
-                                order = order.slice(0,order.length-1)+"】"
-                            }
+                            order = String(order)
+                            order = order.replace("\[","【")
+                            order = order.replace("\]","】")
                             if (order === "【】"){
                                 event.cancel()
                             }
                         }
                         continue
                     } 
-                    if ((distance > radiusSet[0] || isMajoPlayer(receiver).name == "夏目安安") && ananOrder){
-                        ananOrderReceived = ananOrderReceived.filter(majo =>{
-                            if (majo == "placeHolder"){
-                                return majo
-                            }
-                            if (majo.name != isMajoPlayer(receiver).name){
-                                return majo
-                            }
-                        })
-                    }
                     receiver.tell(speaker)
                     receiver.tell("  "+messageSponge(messagePrefix(message),Math.max(0,(distance-radiusSet[0])/(radiusSet[1]-radiusSet[0]))))
                 }
@@ -156,12 +154,20 @@ PlayerEvents.chat(event =>{
                 }
             }
             if (ananOrder){
+                if (!ananOrderReceived){
+                    for (let receiver of global.majoList){
+                        if (receiver.player){
+                            if (receiver.player.distanceToEntity(player) <= ananOrderRadius && receiver.player.name.string != "夏目安安"){
+                                ananOrderReceived.push(receiver)
+                            }
+                        }
+                    }
+                }
+                if (!ananOrderReceived){event.cancel()}
                 let order = messagePrefix(message)
+                order = String(order)
                 order = order.slice(0,0)+"【"+order.slice(1)
                 order = order.slice(0,order.length-1)+'】'
-                if (ananOrderReceived[0] == "placeHolder"){
-                    ananOrderReceived.splice(0,1)
-                }
                 for (let orderReceiver of ananOrderReceived){
                     if (orderReceiver.player){
                         let receiverName = orderReceiver.player.name.string
@@ -334,6 +340,7 @@ PlayerEvents.tick(event =>{
     }
     let carry = player.carryOnData
     if (!carry.carrying){return 0}
+    if (!carry.entity){return 0}
     if (!carry.entity.isPlayer()){return 0}
     let majo = isMajoPlayer(carry.entity)
     if (majo){

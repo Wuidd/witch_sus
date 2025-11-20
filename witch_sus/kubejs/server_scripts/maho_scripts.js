@@ -2,8 +2,10 @@
 //魔法复现
 
 let meruruMahoCost = 10000 //梅露露魔法的精力消耗
+let meruruMahoBenefit = 1 //梅露露魔法提供的魔女化乘子减免
 let hannaMahoCost = 20 //汉娜魔法的体力消耗
 let hannaMahoTimePause = 6 //调整汉娜的漂浮速率
+let reloadTimePause = 72000 //魔法步枪的装弹时间
 
 //梅露露的魔法
 ItemEvents.entityInteracted("mocai:meruru_cross",event =>{
@@ -17,13 +19,19 @@ ItemEvents.entityInteracted("mocai:meruru_cross",event =>{
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
     entity.potionEffects.add("minecraft:regeneration",200,0,false,true)
+    if (isMajoPlayer(entity)){
+        let patient = isMajoPlayer(entity)
+        patient.extraMajolizeMulti -= meruruMahoBenefit
+        if (patient.extraMajolizeMulti < 1){
+            patient.extraMajolizeMulti = 1
+        }
+    }
     pressureScore.add(meruruMahoCost)
     server.runCommandSilent("/execute as "+player.name.string+" at @s run playsound minecraft:block.beacon.ambient voice @a ~ ~ ~ 0.5 2")
     player.addItemCooldown("mocai:meruru_cross",1200)
 })
 
 //奈叶香的枪
-let reloadTimePause = 72000
 PlayerEvents.tick(event =>{
     if (!isMajoProgressing){return 0}
     let player = event.player
