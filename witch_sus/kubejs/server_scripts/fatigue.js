@@ -75,7 +75,7 @@ PlayerEvents.tick(event =>{
     }
     if (jumpCount.get() > 0 && !majo.faint){
         fatigueScore.add(Math.ceil(basicFatigueSpeed*majo.fatigueMulti*jumpMulti*majo.fatigueMultiFromPressure))
-        majo.extraFoodNeedFromSporting = 1.5*player.totalMovementSpeed/player.defaultMovementSpeed
+        majo.extraFoodNeedFromSporting = jumpMulti*player.totalMovementSpeed/player.defaultMovementSpeed
         jumpCount.set(0)
         sporting = true
     }

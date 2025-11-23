@@ -4,7 +4,7 @@
 
 function vecToArr(vec3){
     let Arr = [vec3.x,vec3.y,vec3.z]
-    Arr.forEach((cor,index) => Arr[index] = Math.round(cor))
+    Arr.forEach((cor,index) => Arr[index] = Math.floor(cor))
     return Arr
 }
 

@@ -20,7 +20,7 @@ function Majo(name,height,color,token,physique,mentality){
     this.exhausted = false
 
     this.maxFood = 960000+1920*physique
-    this.extraFoodNeed = 0.9+0.01*physique
+    this.extraFoodNeed = 0.9+0.002*physique
     this.extraFoodNeedFromSporting = 1
 
     this.maxPressure = 150000+1000*mentality+200*physique

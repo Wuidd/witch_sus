@@ -112,7 +112,7 @@ EntityEvents.death("player",event =>{
         if(event.source.weaponItem != "air" && event.source.weaponItem){
             hasWeapon = true
             weapon = event.source.weaponItem.id.toString()
-            weaponName = event.source.weaponItem.getDisplayName().getString()
+            weaponName = event.source.weaponItem.hoverName.string
         }
     }
     for (let op of Object.keys(operatorList)){
@@ -137,11 +137,11 @@ EntityEvents.death("player",event =>{
     desetUpMajo(server,majo)
     majo.majolizeScore = 0
     majo.extraMajolizeMulti = 1
-    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress).set(0)
-    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,fatigue).set(0)
-    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure).set(0)
-    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,jump).set(0)
-    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,hunger).set(0)
+    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress).reset()
+    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,fatigue).reset()
+    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure).reset()
+    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,jump).reset()
+    server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,hunger).reset()
 })
 
 //主进程
@@ -266,7 +266,7 @@ function reloadScript(server){
     }
     server.runCommandSilent("/gamerule playersSleepingPercentage 200")
     server.runCommandSilent("/gamerule naturalRegeneration false")
-    server.runCommandSilent("/gamerule doDaylightCycle true")
+    server.runCommandSilent("/gamerule doDaylightCycle false")
     majoProgress = server.scoreboard.getObjective('Majo_Progress')
     fatigue = server.scoreboard.getObjective('Fatigue')
     pressure = server.scoreboard.getObjective('Pressure')
@@ -285,6 +285,7 @@ function setUpMajo(server,majo,player){
     }
     majo.scoreHolder = findScoreHolder(server,majo.name)
     majo.majolizeScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress).get()
+    majo.extraMajolizeMulti = 9*majo.majolizeScore/majo.debris+1
     majoPlayerPrefix(server,majo)
     player.tell("§2您正在扮演"+majo.color+"◆"+majo.name)
     server.runCommandSilent('/hiddennames setName '+name+' name {"text":"'+name+majo.color+'◆'+majo.name+'"}')
@@ -344,8 +345,8 @@ function majolizeProgress(server){
     for (let majo of global.majoList){
         if (majo.player){
             let majoScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,majoProgress)
+            majo.extraMajolizeMulti = 9*majo.majolizeScore/majo.debris+1
             majoScore.add(Math.floor(basicMajolizeSpeed*majo.majolizeMulti*majo.extraMajolizeMulti))
-            majo.extraMajolizeMulti += majo.majolizeScore/majo.debris+0.5
         }
     }
 }
@@ -457,10 +458,10 @@ function emaMajolizeFix(server){
     }
     let newScore = score.get()
     if (newScore < oldScore || newScore == 0){
-        ema.extraMajolizeMulti -= 0.01
+        ema.extraMajolizeMulti -= 0.1
         if (ema.extraMajolizeMulti < 1){ema.extraMajolizeMulti = 1}
     }
     else {
-        ema.extraMajolizeMulti += 0.01
+        ema.extraMajolizeMulti += 0.1
     }
 }

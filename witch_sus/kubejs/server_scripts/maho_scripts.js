@@ -2,7 +2,7 @@
 //魔法复现
 
 let meruruMahoCost = 10000 //梅露露魔法的精力消耗
-let meruruMahoBenefit = 1 //梅露露魔法提供的魔女化乘子减免
+let meruruMahoBenefit = 5 //梅露露魔法提供的魔女化乘子减免
 let hannaMahoCost = 20 //汉娜魔法的体力消耗
 let hannaMahoTimePause = 6 //调整汉娜的漂浮速率
 let mahoRifleReloadTimeTrigger = false //按天为魔法步枪恢复弹药
@@ -14,7 +14,7 @@ ItemEvents.entityInteracted("mocai:meruru_cross",event =>{
     if (!isMajoPlayer(player)){return 0}
     let majo = isMajoPlayer(player)
     if (majo.name != "冰上梅露露"){return 0}
-    if (majo.faint){return 0}
+    if (majo.faint || majo.exhausted){return 0}
     let entity = event.target
     let server = event.server
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
@@ -29,6 +29,16 @@ ItemEvents.entityInteracted("mocai:meruru_cross",event =>{
     pressureScore.add(meruruMahoCost)
     server.runCommandSilent("/execute as "+player.name.string+" at @s run playsound minecraft:block.beacon.ambient voice @a ~ ~ ~ 0.5 2")
     player.addItemCooldown("mocai:meruru_cross",1200)
+})
+
+//涂了特雷德基姆的武器
+EntityEvents.beforeHurt(event =>{
+    if (!isMajoProgressing){return 0}
+    if (!event.source.player){return 0}
+    if (event.source.weaponItem == "air"){return 0}
+    if (event.entity.potionEffects.isActive("mocai:witchfication") && event.source.weaponItem.customData.getBoolean("tredecim")){
+        event.entity.setHealth(0)
+    }
 })
 
 //奈叶香的枪
@@ -84,7 +94,7 @@ PlayerEvents.tick(event =>{
     if (!isMajoPlayer(player)){return 0}
     let majo = isMajoPlayer(player)
     if (majo.name != "宝生玛格"){return 0}
-    if (majo.selectedSound >= majo.learnedSound.length){majo.selectedSound = 0}
+    if (majo.selectedSound >= majo.learnedSound.length || majo.faint){majo.selectedSound = 0}
     let item = player.getMainHandItem()
     if (!item.is("mocai:margo_tarot")){
         item = player.getOffHandItem()
@@ -156,23 +166,37 @@ PlayerEvents.tick(event =>{
     if (!isMajoPlayer(player)){return 0}
     let majo = isMajoPlayer(player)
     if (majo.name != "远野汉娜"){return 0}
-    if (player.sleeping){return 0}
-    if (majo.flying && !majo.exhausted){
+    if (player.sleeping || majo.exhausted || majo.faint){
+        majo.flying = false
+        return 0
+    }
+    if (majo.flying){
         let server = event.server
         let level = event.level
         let pos = vecToArr(player.position())
         let time = server.tickCount
-        if (time % hannaMahoTimePause == 0 || level.getBlock(pos[0],Math.floor(pos[1]-0.3),pos[2]).getId() != "minecraft:air" || player.shiftKeyDown){
+        if (time % hannaMahoTimePause == 0 || level.getBlock(pos[0],Math.floor(player.position().y-0.5),pos[2]).getId() != "minecraft:air" || player.shiftKeyDown){
             player.potionEffects.add("minecraft:levitation",Math.floor(hannaMahoTimePause/2),0,false,false)
         }
         player.potionEffects.add("minecraft:slow_falling",60,0,false,false)
         if (player.shiftKeyDown){
             player.potionEffects.add("minecraft:levitation",20,0,false,false)
         }
-        if (player.mainSupportingBlockPos.isPresent()){return 0}
+        if (level.getBlock(pos[0],pos[1],pos[2]).getId() != "minecraft:air"){return 0}
         let fatigueScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,fatigue)
         fatigueScore.add(hannaMahoCost*majo.fatigueMulti*majo.fatigueMultiFromPressure)
     }
 })
 
 //安安的魔法实现见player_behaviour部分
+
+//亚里沙的魔法
+//点燃
+/*ItemEvents.rightClicked("minecraft:air",event=>{
+    if (!isMajoProgressing){return 0}
+    let player = event.player
+    if (!isMajoPlayer(player)){return 0}
+    let majo = isMajoPlayer(player)
+    if (majo.name != "紫藤亚里沙"){return 0}
+    player.inventoryMenu.clicked
+})*/

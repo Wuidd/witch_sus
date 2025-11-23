@@ -1,6 +1,6 @@
 // priority:5
 
-let sleepBoost = 4 //睡眠时的恢复乘数
+let sleepBoost = 2 //睡眠时的恢复乘数
 
 //在指定方块上休息
 
@@ -23,7 +23,7 @@ PlayerEvents.tick(event =>{
     let pressureScore = server.scoreboard.getOrCreatePlayerScore(majo.scoreHolder,pressure)
     for (let restableBlock of Object.keys(global.restableBlockList)){
         if (block.getId() == restableBlock) {
-            pressureScore.add(Math.ceil(-global.restableBlockList[restableBlock]*sleepMulti/majo.pressureMulti))
+            pressureScore.add(Math.ceil(-global.restableBlockList[restableBlock]*sleepMulti*Math.max(1,Math.min(3,6*pressureScore.get()/majo.maxPressure-1))/majo.pressureMulti))
             fatigueScore.add(Math.ceil(-global.restableBlockList[restableBlock]*sleepMulti/(5*majo.fatigueMulti)))
             if (fatigueScore.get() < 0){
                 fatigueScore.set(0)
@@ -36,7 +36,7 @@ PlayerEvents.tick(event =>{
     }
     for (let restableBlockTag of Object.keys(global.restableBlockTagList)){
         if (block.hasTag(restableBlockTag)) {
-            pressureScore.add(Math.ceil(-global.restableBlockTagList[restableBlockTag]*sleepMulti/majo.pressureMulti))
+            pressureScore.add(Math.ceil(-global.restableBlockTagList[restableBlockTag]*sleepMulti*Math.max(1,Math.min(3,6*pressureScore.get()/majo.maxPressure-1))/majo.pressureMulti))
             fatigueScore.add(Math.ceil(-global.restableBlockTagList[restableBlockTag]*sleepMulti/(5*majo.fatigueMulti)))
             if (fatigueScore.get() < 0){
                 fatigueScore.set(0)
